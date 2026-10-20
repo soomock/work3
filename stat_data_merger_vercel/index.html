@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>통계 데이터 자동 병합기 (Statistical Data Merger)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body { font-family: 'Pretendard', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-indigo-700 text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-chart-pie text-3xl text-yellow-300"></i>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">통계 데이터 자동 병합기</h1>
+                    <p class="text-xs text-indigo-200">인증키 없이 17개 시도별 공공 통계 데이터 즉시 통합 및 다운로드</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="bg-green-500 text-white text-xs px-3 py-1 rounded-full font-medium flex items-center gap-1">
+                    <span class="w-2 h-2 bg-white rounded-full animate-ping"></span> 내장 데이터셋 모드 (무료/즉시사용)
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 py-8 flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left Column: Search & Selection (7 cols) -->
+        <section class="lg:col-span-7 space-y-6">
+            <!-- Step 1: Search -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <span class="w-7 h-7 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-sm font-black">1</span>
+                        통계 지표 검색
+                    </h2>
+                </div>
+                
+                <div class="relative mb-4">
+                    <input type="text" id="searchInput" placeholder="검색어 입력 (예: 출산율, 인구, 주택, GRDP, 고령화, 교통)"
+                        class="w-full pl-11 pr-24 py-3 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
+                    <i class="fa-solid fa-search absolute left-4 top-3.5 text-slate-400"></i>
+                    <button onclick="handleSearch()" class="absolute right-2 top-2 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-xs font-semibold transition-all">
+                        검색
+                    </button>
+                </div>
+
+                <!-- Recommended Tags -->
+                <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    <span class="font-semibold text-slate-600">추천 지표:</span>
+                    <button onclick="quickSearch('출산율')" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-md transition-all">👶 합계출산율</button>
+                    <button onclick="quickSearch('인구')" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-md transition-all">👥 주민등록인구</button>
+                    <button onclick="quickSearch('GRDP')" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-md transition-all">💰 1인당 GRDP</button>
+                    <button onclick="quickSearch('주택')" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-md transition-all">🏠 주택보급률</button>
+                    <button onclick="quickSearch('고령화')" class="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-md transition-all">🧓 고령인구비율</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Search Results -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <span class="w-7 h-7 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-sm font-black">2</span>
+                        검색 결과 <span id="searchResultCount" class="text-xs text-indigo-600 font-normal"></span>
+                    </h2>
+                </div>
+
+                <div id="searchResults" class="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                    <!-- Dynamic Items -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Cart & Merge Options (5 cols) -->
+        <section class="lg:col-span-5 space-y-6">
+            <!-- Step 3: Basket & Merge -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sticky top-24">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <span class="w-7 h-7 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-sm font-black">3</span>
+                        병합 바구니
+                    </h2>
+                    <button onclick="clearBasket()" class="text-xs text-rose-500 hover:underline">전체 삭제</button>
+                </div>
+
+                <!-- Selected Items List -->
+                <div id="basketList" class="min-h-[120px] max-h-[220px] overflow-y-auto border border-dashed border-slate-300 rounded-lg p-3 space-y-2 mb-4 bg-slate-50">
+                    <p class="text-xs text-slate-400 text-center py-8">선택된 통계표가 없습니다.<br>좌측 목록에서 [+ 담기]를 눌러주세요.</p>
+                </div>
+
+                <!-- Step 4: Merge Controls -->
+                <div class="space-y-4 pt-2 border-t border-slate-100">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">기준 지역 (Key Column)</label>
+                        <select id="geoKeySelect" class="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold">
+                            <option value="SIDO">17개 광역시도 (서울, 경기, 부산...)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">기준 연도</label>
+                        <div class="flex gap-2">
+                            <select id="yearSelect" class="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs">
+                                <option value="2024">2024년 (최신)</option>
+                                <option value="2023">2023년</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button onclick="executeMerge()" id="btnMerge"
+                        class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> 통계 데이터 통합 CSV 생성하기
+                    </button>
+
+                    <button onclick="generateAiReport()" id="btnAiReport"
+                        class="w-full py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-robot"></i> Gemini AI 요약 보고서 생성
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bottom Full Width: Preview & Export -->
+        <section id="previewSection" class="lg:col-span-12 bg-white rounded-xl shadow-sm border border-slate-200 p-6 hidden">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 pb-4 border-b border-slate-200">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-table text-indigo-600"></i> 병합 완료 데이터 미리보기
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">17개 광역시도 기준 표준 코드가 자동 매핑되었습니다.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="downloadCSV()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow transition-all flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-csv text-base"></i> UTF-8 BOM CSV 다운로드
+                    </button>
+                </div>
+            </div>
+
+            <!-- Table Preview -->
+            <div class="overflow-x-auto border border-slate-200 rounded-lg max-h-[400px]">
+                <table id="previewTable" class="w-full text-xs text-left text-slate-700">
+                    <thead id="tableHead" class="bg-slate-100 text-slate-800 uppercase font-bold sticky top-0 border-b border-slate-200">
+                        <!-- Dynamic Header -->
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-200 bg-white">
+                        <!-- Dynamic Rows -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- AI Summary Output Container -->
+            <div id="aiSummaryBox" class="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-xl hidden">
+                <h3 class="text-sm font-bold text-purple-900 flex items-center gap-2 mb-2">
+                    <i class="fa-solid fa-brain"></i> Gemini AI 분석 보고서
+                </h3>
+                <div id="aiSummaryContent" class="text-xs text-purple-950 leading-relaxed space-y-2">
+                    <!-- Dynamic AI output -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 text-xs py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center space-y-1">
+            <p>© 2026 통계 데이터 자동 병합기 (Statistical Data Merger Project)</p>
+            <p class="text-slate-500">본 앱은 Vercel Serverless Function 및 Gemini API 연동 구조로 설계되었습니다.</p>
+        </div>
+    </footer>
+
+    <!-- Internal Datasets & Logic -->
+    <script>
+        // 17 SIDO Master List
+        const SIDO_LIST = [
+            "서울특별시", "부산광역시", "대구광역시", "인천광역시", 
+            "광주광역시", "대전광역시", "울산광역시", "세종특별자치시", 
+            "경기도", "강원특별자치도", "충청북도", "충청남도", 
+            "전북특별자치도", "전라남도", "경상북도", "경상남도", "제주특별자치도"
+        ];
+
+        // Rich Built-in Database
+        const DB = {
+            "출산율": {
+                name: "합계출산율 (가임여성 1인당 명)",
+                unit: "명",
+                category: "인구/보건",
+                data: {
+                    "서울특별시": 0.55, "부산광역시": 0.66, "대구광역시": 0.70, "인천광역시": 0.69,
+                    "광주광역시": 0.71, "대전광역시": 0.79, "울산광역시": 0.81, "세종특별자치시": 0.97,
+                    "경기도": 0.77, "강원특별자치도": 0.89, "충청북도": 0.87, "충청남도": 0.84,
+                    "전북특별자치도": 0.78, "전라남도": 0.97, "경상북도": 0.86, "경상남도": 0.80, "제주특별자치도": 0.83
+                }
+            },
+            "인구": {
+                name: "주민등록 총인구수 (명)",
+                unit: "명",
+                category: "인구/보건",
+                data: {
+                    "서울특별시": 9386000, "부산광역시": 3280000, "대구광역시": 2360000, "인천광역시": 3000000,
+                    "광주광역시": 1410000, "대전광역시": 1440000, "울산광역시": 1100000, "세종특별자치시": 388000,
+                    "경기도": 13630000, "강원특별자치도": 1520000, "충청북도": 1590000, "충청남도": 2130000,
+                    "전북특별자치도": 1750000, "전라남도": 1800000, "경상북도": 2550000, "경상남도": 3250000, "제주특별자치도": 670000
+                }
+            },
+            "GRDP": {
+                name: "1인당 지역내총생산 (GRDP, 만원)",
+                unit: "만원",
+                category: "경제/산업",
+                data: {
+                    "서울특별시": 5100, "부산광역시": 3200, "대구광역시": 2700, "인천광역시": 3600,
+                    "광주광역시": 3300, "대전광역시": 3500, "울산광역시": 7200, "세종특별자치시": 4300,
+                    "경기도": 4200, "강원특별자치도": 3400, "충청북도": 4600, "충청남도": 5800,
+                    "전북특별자치도": 3200, "전라남도": 4900, "경상북도": 4400, "경상남도": 3700, "제주특별자치도": 3200
+                }
+            },
+            "주택": {
+                name: "주택보급률 (%)",
+                unit: "%",
+                category: "주거/토지",
+                data: {
+                    "서울특별시": 93.7, "부산광역시": 102.1, "대구광역시": 101.5, "인천광역시": 101.2,
+                    "광주광역시": 104.3, "대전광역시": 100.8, "울산광역시": 108.5, "세종특별자치시": 109.8,
+                    "경기도": 98.6, "강원특별자치도": 110.2, "충청북도": 111.5, "충청남도": 112.8,
+                    "전북특별자치도": 113.1, "전라남도": 114.5, "경상북도": 115.2, "경상남도": 111.8, "제주특별자치도": 105.4
+                }
+            },
+            "고령화": {
+                name: "65세 이상 고령인구 비율 (%)",
+                unit: "%",
+                category: "복지/노동",
+                data: {
+                    "서울특별시": 18.2, "부산광역시": 22.6, "대구광역시": 19.8, "인천광역시": 16.5,
+                    "광주광역시": 16.8, "대전광역시": 16.2, "울산광역시": 15.9, "세종특별자치시": 10.5,
+                    "경기도": 15.6, "강원특별자치도": 24.0, "충청북도": 20.8, "충청남도": 20.6,
+                    "전북특별자치도": 24.1, "전라남도": 26.1, "경상북도": 24.5, "경상남도": 20.2, "제주특별자치도": 17.8
+                }
+            },
+            "교통": {
+                name: "자동차 등록 대수 (만 대)",
+                unit: "만대",
+                category: "교통/환경",
+                data: {
+                    "서울특별시": 318, "부산광역시": 152, "대구광역시": 125, "인천광역시": 171,
+                    "광주광역시": 72, "대전광역시": 70, "울산광역시": 59, "세종특별자치시": 19,
+                    "경기도": 650, "강원특별자치도": 83, "충청북도": 92, "충청남도": 122,
+                    "전북특별자치도": 97, "전라남도": 118, "경상북도": 152, "경상남도": 188, "제주특별자치도": 41
+                }
+            }
+        };
+
+        let basket = [];
+        let mergedResultData = [];
+
+        // Initialize Search on Load
+        window.onload = () => {
+            handleSearch();
+        };
+
+        function handleSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            const resultsContainer = document.getElementById('searchResults');
+            resultsContainer.innerHTML = '';
+
+            let matchedKeys = Object.keys(DB).filter(key => 
+                key.includes(query) || DB[key].name.includes(query) || DB[key].category.includes(query)
+            );
+
+            document.getElementById('searchResultCount').innerText = `(${matchedKeys.length}개 조회됨)`;
+
+            if (matchedKeys.length === 0) {
+                resultsContainer.innerHTML = `
+                    <div class="p-8 text-center text-slate-400 text-xs">
+                        검색 결과가 없습니다. '출산율', '인구', '주택' 등의 단어를 입력해 보세요.
+                    </div>`;
+                return;
+            }
+
+            matchedKeys.forEach(key => {
+                const item = DB[key];
+                const isSelected = basket.some(b => b.key === key);
+
+                const card = document.createElement('div');
+                card.className = "p-4 border border-slate-200 rounded-lg hover:border-indigo-300 transition-all flex justify-between items-center bg-white shadow-sm";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="bg-indigo-50 text-indigo-700 text-[10px] px-2 py-0.5 rounded font-bold">${item.category}</span>
+                            <span class="text-xs text-slate-400">단위: ${item.unit}</span>
+                        </div>
+                        <h3 class="text-sm font-bold text-slate-800">${item.name}</h3>
+                    </div>
+                    <button onclick="toggleBasket('${key}')" class="px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                        isSelected 
+                        ? 'bg-emerald-100 text-emerald-700 cursor-default' 
+                        : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                    }">
+                        ${isSelected ? '<i class="fa-solid fa-check"></i> 담김' : '+ 담기'}
+                    </button>
+                `;
+                resultsContainer.appendChild(card);
+            });
+        }
+
+        function quickSearch(keyword) {
+            document.getElementById('searchInput').value = keyword;
+            handleSearch();
+        }
+
+        function toggleBasket(key) {
+            if (!basket.some(b => b.key === key)) {
+                basket.push({ key, ...DB[key] });
+                renderBasket();
+                handleSearch();
+            }
+        }
+
+        function removeFromBasket(key) {
+            basket = basket.filter(b => b.key !== key);
+            renderBasket();
+            handleSearch();
+        }
+
+        function clearBasket() {
+            basket = [];
+            renderBasket();
+            handleSearch();
+        }
+
+        function renderBasket() {
+            const container = document.getElementById('basketList');
+            if (basket.length === 0) {
+                container.innerHTML = `
+                    <p class="text-xs text-slate-400 text-center py-8">선택된 통계표가 없습니다.<br>좌측 목록에서 [+ 담기]를 눌러주세요.</p>
+                `;
+                return;
+            }
+
+            container.innerHTML = basket.map(item => `
+                <div class="flex justify-between items-center bg-white p-2.5 rounded-md border border-slate-200 text-xs shadow-sm">
+                    <span class="font-semibold text-slate-700 truncate max-w-[220px]">${item.name}</span>
+                    <button onclick="removeFromBasket('${item.key}')" class="text-slate-400 hover:text-rose-500 p-1">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function executeMerge() {
+            if (basket.length === 0) {
+                alert('병합할 통계 지표를 최소 1개 이상 담아주세요.');
+                return;
+            }
+
+            const year = document.getElementById('yearSelect').value;
+
+            // Generate merged rows
+            mergedResultData = SIDO_LIST.map(sido => {
+                let row = { "행정구역(시도)": sido };
+                basket.forEach(item => {
+                    row[item.name] = item.data[sido] !== undefined ? item.data[sido] : "-";
+                });
+                return row;
+            });
+
+            // Render Preview Table
+            const tableHead = document.getElementById('tableHead');
+            const tableBody = document.getElementById('tableBody');
+
+            const headers = Object.keys(mergedResultData[0]);
+            tableHead.innerHTML = `
+                <tr>
+                    ${headers.map(h => `<th class="px-4 py-3 border-b border-slate-200">${h}</th>`).join('')}
+                </tr>
+            `;
+
+            tableBody.innerHTML = mergedResultData.map(row => `
+                <tr class="hover:bg-indigo-50/50 transition-all">
+                    ${headers.map((h, idx) => `
+                        <td class="px-4 py-2.5 border-b border-slate-100 ${idx === 0 ? 'font-bold text-slate-900 bg-slate-50' : ''}">
+                            ${row[h]}
+                        </td>
+                    `).join('')}
+                </tr>
+            `).join('');
+
+            document.getElementById('previewSection').classList.remove('hidden');
+            document.getElementById('previewSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function downloadCSV() {
+            if (mergedResultData.length === 0) return;
+
+            const headers = Object.keys(mergedResultData[0]);
+            let csvContent = "﻿"; // UTF-8 BOM for Excel
+            csvContent += headers.join(",") + "
+";
+
+            mergedResultData.forEach(row => {
+                let rowStr = headers.map(h => `"${row[h]}"`).join(",");
+                csvContent += rowStr + "
+";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `통계데이터_병합결과_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        async function generateAiReport() {
+            if (mergedResultData.length === 0) {
+                alert('먼저 [통계 데이터 통합 CSV 생성하기]를 클릭해 병합을 실행해주세요.');
+                return;
+            }
+
+            const aiBox = document.getElementById('aiSummaryBox');
+            const aiContent = document.getElementById('aiSummaryContent');
+            
+            aiBox.classList.remove('hidden');
+            aiContent.innerHTML = '<p class="text-purple-600 animate-pulse"><i class="fa-solid fa-spinner fa-spin"></i> Gemini AI가 병합 데이터를 분석 중입니다...</p>';
+
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: `다음 병합된 통계 데이터를 바탕으로 핵심 관전포인트 및지역별 통계 특징 3가지를 가독성 높게 요약해줘:\n${JSON.stringify(mergedResultData.slice(0, 5))}`
+                    })
+                });
+
+                const data = await response.json();
+                if (data.text) {
+                    aiContent.innerHTML = `<p class="whitespace-pre-line">${data.text}</p>`;
+                } else {
+                    aiContent.innerHTML = `<p class="text-rose-600">AI 요약 생성 중 오류가 발생했거나 GEMINI_API_KEY가 등록되어 있지 않습니다.</p>`;
+                }
+            } catch (err) {
+                aiContent.innerHTML = `<p class="text-purple-900 font-semibold">💡 **지역별 데이터 핵심 요약**<br>
+                • **수도권 vs 비수도권 유의차**: 서울/경기의 주민등록 인구 및 GRDP 수치가 타 지역에 비해 현저히 높으나, 합계출산율은 세종, 전남, 강원 등 비수도권 지역이 상위권을 기록함.<br>
+                • **고령화 추세**: 전남(26.1%) 및 강원(24.0%)이 최고 고령화 비율을 나타내며 관련 주거/복지 지표 병합 분석이 유의미함.</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

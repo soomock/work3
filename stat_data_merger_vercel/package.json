@@ -1,0 +1,10 @@
+{
+  "name": "stat-data-merger",
+  "version": "1.0.0",
+  "description": "Statistical Data Merger Web App for Vercel Deployment",
+  "main": "index.html",
+  "scripts": {
+    "start": "serve ."
+  },
+  "dependencies": {}
+}
